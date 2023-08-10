@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -22,21 +23,44 @@ public class Client {
         public void run(){
             try(this.in; this.out){
                 while(true){
-                    String answer = this.in.readLine();
-                    if(answer != null){
-                        System.out.println(answer);
-                        while(true){
-                            String command = console.readLine();
-                            if(command != null){
-                                this.out.println(command);
+                    while(true){
+                        String answer = this.in.readLine();
+                        if(answer != null){
+                            if(answer.equalsIgnoreCase("<END OF ANSWER>")) {
                                 break;
                             }
+                            System.out.println(answer);
                         }
+                    }
+                    String command = console.readLine();
+                    if(command != null){
+                        this.out.println(command);
                     }
                 }
             } catch(Exception e){
-
+                e.printStackTrace();
             }
+        }
+
+        public String readLine() throws IOException{
+            final int bufferSize = 100;
+            char[] buffer = new char[bufferSize];
+            StringBuilder outputLine = new StringBuilder();
+            int readLength = bufferSize;
+            while(readLength != 0){
+                System.out.println();
+                readLength = console.reader().read(buffer, 0, bufferSize);
+                if(readLength < bufferSize){
+                    outputLine.append(Arrays.copyOfRange(buffer, 0, readLength));
+                }
+            }
+
+            if(outputLine.length() == 0){
+                return null;
+            } else {
+                return outputLine.toString();
+            }
+
         }
     }
 
