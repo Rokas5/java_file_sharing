@@ -127,10 +127,22 @@ class FileServer {
 
         @Override
         public String executeCommand(String command, String username, BufferedReader in, PrintWriter out) throws IOException{ 
-            String files = Files.find(uploadedFileDir, 5, (path, attr) -> attr.isRegularFile() && path.getFileName().toString().startsWith("pub-"))
+            String publicFiles = Files.find(uploadedFileDir, 5, 
+            (path, attr) -> attr.isRegularFile() && path.getFileName().toString().startsWith("pub-") && !path.getParent().getFileName().toString().equals(username))
             .map(path->path.getFileName().toString().substring(4))
             .collect(Collectors.joining("\n"));
-            return files.length() > 0 ? files : "You have access to 0 files";
+
+            String userFiles = Files.find(uploadedFileDir.resolve(username), 5, 
+            (path, attr) -> attr.isRegularFile())
+            .map(path->{
+                String filename = path.getFileName().toString();
+                return filename.substring(4) + (filename.substring(0, 4).equals("pub-") ? " (public)" : " (private)");
+            })
+            .collect(Collectors.joining("\n"));
+            
+
+            String totalFiles = "Public:\n" + publicFiles + "\n\nPersonal:\n" + userFiles;
+            return totalFiles.length() > 0 ? totalFiles : "You have access to 0 files";
         }
     }
 
