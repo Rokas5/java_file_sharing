@@ -60,7 +60,7 @@ class FileServer {
                     int commandIndex = -1;
                     if(command != null){
                         if((commandIndex = commandKeywords.indexOf(command.split(" ")[0].toLowerCase())) >= 0){
-                            String answer = serverCommands.get(commandIndex).executeCommand(command, username);
+                            String answer = serverCommands.get(commandIndex).executeCommand(command, username, this.in, this.out);
                             out.println(answer);
                         } else {
                             out.println("These is no such command");
@@ -113,7 +113,7 @@ class FileServer {
 
     static interface Command {
         public String getCommandKeyword();
-        public String executeCommand(String command, String username) throws Exception;
+        public String executeCommand(String command, String username, BufferedReader in, PrintWriter out) throws Exception;
     }
 
     static class ListUploadedFiles implements Command {
@@ -126,7 +126,7 @@ class FileServer {
         public String getCommandKeyword(){ return "list"; }
 
         @Override
-        public String executeCommand(String command, String username) throws IOException{ 
+        public String executeCommand(String command, String username, BufferedReader in, PrintWriter out) throws IOException{ 
             String files = Files.find(uploadedFileDir, 5, (path, attr) -> attr.isRegularFile() && path.getFileName().toString().startsWith("pub-"))
             .map(path->path.getFileName().toString().substring(4))
             .collect(Collectors.joining("\n"));
@@ -144,7 +144,40 @@ class FileServer {
         public String getCommandKeyword(){ return "upload"; }
 
         @Override
-        public String executeCommand(String command, String username){ return "<NOT IMPLEMENETED>"; }
+        public String executeCommand(String command, String username, BufferedReader in, PrintWriter out) throws IOException{
+            String[] commandParts = command.split(" ");
+            if(commandParts.length > 3){
+                return "To many options (" + commandParts.length + ") provided in the comamnd. It should be: upload <file path> <private/public for file access>";
+            }
+            if(commandParts.length < 3){
+                return "To few options (" + commandParts.length + ") provided in the comamnd. It should be: upload <file path> <private/public for file access>";
+            }
+
+
+            String filePrefix = commandParts[2].equalsIgnoreCase("private") ? "pri-" : "pub-";
+            Path filePath = uploadedFileDir.resolve(username).resolve(filePrefix+commandParts[1]);
+
+            if(Files.exists(filePath)){
+                return commandParts[1] + " already exists. You must delete it before uploading a file with the same name";
+            }
+
+            try(var writter = Files.newBufferedWriter(filePath)){
+                out.println("<UPLOAD FILE>");
+                while(true){
+                    String data = in.readLine();
+                    if(data == null || data.equals("<FIN>")){
+                        break;
+                    }
+                    if(data.substring(0, 5).equals("<CON>")){
+                        writter.write(data.substring(5)+'\n');
+                    }
+                }
+            } catch (Exception e){
+                return "Failed to upload file";
+            }
+
+            return "File uploaded successfully";
+        }
     }
 
     static class DownloadFiles implements Command {
@@ -157,7 +190,9 @@ class FileServer {
         public String getCommandKeyword(){ return "download"; }
 
         @Override
-        public String executeCommand(String command, String username){ return "<NOT IMPLEMENETED>"; }
+        public String executeCommand(String command, String username, BufferedReader in, PrintWriter out){
+            return "<NOT IMPLEMENETED>";
+        }
     }
 
     static class DeleteFiles implements Command {
@@ -170,7 +205,7 @@ class FileServer {
         public String getCommandKeyword(){ return "delete"; }
 
         @Override
-        public String executeCommand(String command, String username) throws IOException{
+        public String executeCommand(String command, String username, BufferedReader in, PrintWriter out) throws IOException{
             String[] commandParts = command.split(" ");
             if(commandParts.length > 2){
                 return "The command contains too many options. It should be delete <filename>";

@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.nio.file.*;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -14,6 +15,8 @@ public class Client {
         private final PrintWriter out;
         private final Console console = System.console();
 
+        private BufferedReader uploadedFileReader = null;
+
         public ConnectionHandler(Socket s) throws IOException{
             this.s = s;
             this.in = new BufferedReader(new InputStreamReader(s.getInputStream()));
@@ -27,14 +30,40 @@ public class Client {
                         String answer = this.in.readLine();
                         if(answer != null){
                             if(answer.equalsIgnoreCase("<END OF ANSWER>")) {
+                                closeUploadFileReader();
                                 break;
                             }
+
+                            if(answer.equalsIgnoreCase("<UPLOAD FILE>")){
+                                String line;
+                                while((line = uploadedFileReader.readLine()) != null){
+                                    out.println("<CON>" + line);
+                                }
+                                out.println("<FIN>");
+                                closeUploadFileReader();
+                                continue;
+                            }
+
                             System.out.println(answer);
                         }
                     }
-                    String command = console.readLine();
-                    if(command != null){
-                        this.out.println(command);
+                    while(true){
+                        String command = console.readLine();
+                        if(command != null){
+                            String[] commandParts = command.split(" "); 
+                            if(commandParts[0].equalsIgnoreCase("upload")){
+                                try{
+                                    uploadedFileReader = Files.newBufferedReader(Paths.get(".").resolve(commandParts[1]));
+                                } catch (Exception e){
+                                    System.out.println("There is no " + commandParts[1] + " file");
+                                    uploadedFileReader = null;
+                                    continue;
+                                }
+                            }
+    
+                            this.out.println(command);
+                            break;
+                        }
                     }
                 }
             } catch(Exception e){
@@ -42,25 +71,11 @@ public class Client {
             }
         }
 
-        public String readLine() throws IOException{
-            final int bufferSize = 100;
-            char[] buffer = new char[bufferSize];
-            StringBuilder outputLine = new StringBuilder();
-            int readLength = bufferSize;
-            while(readLength != 0){
-                System.out.println();
-                readLength = console.reader().read(buffer, 0, bufferSize);
-                if(readLength < bufferSize){
-                    outputLine.append(Arrays.copyOfRange(buffer, 0, readLength));
-                }
+        public void closeUploadFileReader() throws IOException{
+            if(uploadedFileReader != null){
+                uploadedFileReader.close();
+                uploadedFileReader = null;
             }
-
-            if(outputLine.length() == 0){
-                return null;
-            } else {
-                return outputLine.toString();
-            }
-
         }
     }
 
