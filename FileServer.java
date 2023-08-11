@@ -165,12 +165,16 @@ class FileServer {
                 return "To few options (" + commandParts.length + ") provided in the comamnd. It should be: upload <file path> <private/public for file access>";
             }
 
-
-            String filePrefix = commandParts[2].equalsIgnoreCase("private") ? "pri-" : "pub-";
+            boolean isPrivate = commandParts[2].equalsIgnoreCase("private");
+            String filePrefix = isPrivate ? "pri-" : "pub-";
             Path filePath = uploadedFileDir.resolve(username).resolve(filePrefix+commandParts[1]);
 
             if(Files.exists(filePath)){
                 return commandParts[1] + " already exists. You must delete it before uploading a file with the same name";
+            }
+
+            if(!isPrivate && checkIfPublicFileExists(commandParts[1], uploadedFileDir)){
+                return "There is already a public file with name " + commandParts[1] + ". Rename your file or upload it as private.";
             }
 
             try(var writter = Files.newBufferedWriter(filePath)){
@@ -189,6 +193,11 @@ class FileServer {
             }
 
             return "File uploaded successfully";
+        }
+
+        private boolean checkIfPublicFileExists(String filename, Path uploadedFileDir) throws IOException {
+            return Files.find(uploadedFileDir, 5, (path, attr) -> attr.isRegularFile() && path.getFileName().toString().startsWith("pub-"))
+            .map(path->path.getFileName().toString().substring(4)).anyMatch(path -> path.equals(filename));
         }
     }
 
