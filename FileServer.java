@@ -1,11 +1,15 @@
 import java.io.*;
 import java.net.*;
+import java.nio.file.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.*;
 
 class FileServer {
     static List<Command> serverCommands = new ArrayList<>();
+    static Path uploadedFileDir = Paths.get(".").resolve("uploadedFiles");
     static {
         serverCommands.add(new ListUploadedFiles());
         serverCommands.add(new UploadFiles());
@@ -55,7 +59,7 @@ class FileServer {
                     String command = readUserInput();
                     int commandIndex = -1;
                     if(command != null){
-                        if((commandIndex = commandKeywords.indexOf(command.toLowerCase())) >= 0){
+                        if((commandIndex = commandKeywords.indexOf(command.split(" ")[0].toLowerCase())) >= 0){
                             String answer = serverCommands.get(commandIndex).executeCommand(command);
                             out.println(answer);
                         } else {
@@ -109,7 +113,7 @@ class FileServer {
 
     static interface Command {
         public String getCommandKeyword();
-        public String executeCommand(String command);
+        public String executeCommand(String command) throws Exception;
     }
 
     static class ListUploadedFiles implements Command {
@@ -122,7 +126,12 @@ class FileServer {
         public String getCommandKeyword(){ return "list"; }
 
         @Override
-        public String executeCommand(String command){ return "<NOT IMPLEMENETED>"; }
+        public String executeCommand(String command) throws IOException{ 
+            String files = Files.find(uploadedFileDir, 5, (path, attr) -> attr.isRegularFile() && path.getFileName().toString().startsWith("pub-"))
+            .map(path->path.getFileName().toString().substring(4))
+            .collect(Collectors.joining("\n"));
+            return files.length() > 0 ? files : "You have access to 0 files";
+        }
     }
 
     static class UploadFiles implements Command {
@@ -168,6 +177,7 @@ class FileServer {
         ExecutorService executor = null;
         try{
             executor = Executors.newCachedThreadPool();
+            Files.createDirectories(uploadedFileDir);
                 try(ServerSocket ss = new ServerSocket(6050)) {
                     while(true){
                         Socket s = ss.accept();
@@ -177,7 +187,9 @@ class FileServer {
                     e.printStackTrace();
                     // TODO handle
                 }
-        } finally {
+        } catch(IOException e){
+            e.printStackTrace();
+        }finally {
             executor.shutdown();
             System.exit(0);
         }
