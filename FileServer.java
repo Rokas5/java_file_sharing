@@ -1,15 +1,17 @@
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.*;
 
 class FileServer {
-    static List<Object> serverCommands = new ArrayList<>();
+    static List<Command> serverCommands = new ArrayList<>();
+    static {
+        serverCommands.add(new ListUploadedFiles());
+        serverCommands.add(new UploadFiles());
+        serverCommands.add(new DownloadFiles());
+        serverCommands.add(new DeleteFiles());
+    }
 
     static class ConnectionHandler implements Runnable{
 
@@ -47,12 +49,15 @@ class FileServer {
 
                 out.println("Hello " + this.username + ", below you can see a list of commands available to you:");
                 serverCommands.forEach(out::println);
+                List<String> commandKeywords = serverCommands.stream().map(a->a.getCommandKeyword()).toList();
 
                 while(true){
                     String command = readUserInput();
+                    int commandIndex = -1;
                     if(command != null){
-                        if(command.equalsIgnoreCase("test")){
-
+                        if((commandIndex = commandKeywords.indexOf(command.toLowerCase())) >= 0){
+                            String answer = serverCommands.get(commandIndex).executeCommand(command);
+                            out.println(answer);
                         } else {
                             out.println("These is no such command");
                         }
@@ -100,6 +105,63 @@ class FileServer {
         private boolean signup(){
             return false;
         }
+    }
+
+    static interface Command {
+        public String getCommandKeyword();
+        public String executeCommand(String command);
+    }
+
+    static class ListUploadedFiles implements Command {
+        @Override
+        public String toString() {
+            return "* list - to list uploaded files";
+        }
+
+        @Override
+        public String getCommandKeyword(){ return "list"; }
+
+        @Override
+        public String executeCommand(String command){ return "<NOT IMPLEMENETED>"; }
+    }
+
+    static class UploadFiles implements Command {
+        @Override
+        public String toString() {
+            return "* upload <file path> <private/public for file access> - to upload a file";
+        }
+
+        @Override
+        public String getCommandKeyword(){ return "upload"; }
+
+        @Override
+        public String executeCommand(String command){ return "<NOT IMPLEMENETED>"; }
+    }
+
+    static class DownloadFiles implements Command {
+        @Override
+        public String toString() {
+            return "* download <filename> - to download a file";
+        }
+
+        @Override
+        public String getCommandKeyword(){ return "download"; }
+
+        @Override
+        public String executeCommand(String command){ return "<NOT IMPLEMENETED>"; }
+    }
+
+    static class DeleteFiles implements Command {
+        @Override
+        public String toString() {
+            return "* delete <filename> - to delete a file (you can only delete a file uploaded by you)";
+        }
+
+        @Override
+        public String getCommandKeyword(){ return "delete"; }
+
+        @Override
+        public String executeCommand(String command){ return "<NOT IMPLEMENETED>"; }
     }
 
     public static void main(String args[]){
