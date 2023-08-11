@@ -60,7 +60,7 @@ class FileServer {
                     int commandIndex = -1;
                     if(command != null){
                         if((commandIndex = commandKeywords.indexOf(command.split(" ")[0].toLowerCase())) >= 0){
-                            String answer = serverCommands.get(commandIndex).executeCommand(command);
+                            String answer = serverCommands.get(commandIndex).executeCommand(command, username);
                             out.println(answer);
                         } else {
                             out.println("These is no such command");
@@ -113,7 +113,7 @@ class FileServer {
 
     static interface Command {
         public String getCommandKeyword();
-        public String executeCommand(String command) throws Exception;
+        public String executeCommand(String command, String username) throws Exception;
     }
 
     static class ListUploadedFiles implements Command {
@@ -126,7 +126,7 @@ class FileServer {
         public String getCommandKeyword(){ return "list"; }
 
         @Override
-        public String executeCommand(String command) throws IOException{ 
+        public String executeCommand(String command, String username) throws IOException{ 
             String files = Files.find(uploadedFileDir, 5, (path, attr) -> attr.isRegularFile() && path.getFileName().toString().startsWith("pub-"))
             .map(path->path.getFileName().toString().substring(4))
             .collect(Collectors.joining("\n"));
@@ -144,7 +144,7 @@ class FileServer {
         public String getCommandKeyword(){ return "upload"; }
 
         @Override
-        public String executeCommand(String command){ return "<NOT IMPLEMENETED>"; }
+        public String executeCommand(String command, String username){ return "<NOT IMPLEMENETED>"; }
     }
 
     static class DownloadFiles implements Command {
@@ -157,7 +157,7 @@ class FileServer {
         public String getCommandKeyword(){ return "download"; }
 
         @Override
-        public String executeCommand(String command){ return "<NOT IMPLEMENETED>"; }
+        public String executeCommand(String command, String username){ return "<NOT IMPLEMENETED>"; }
     }
 
     static class DeleteFiles implements Command {
@@ -170,7 +170,23 @@ class FileServer {
         public String getCommandKeyword(){ return "delete"; }
 
         @Override
-        public String executeCommand(String command){ return "<NOT IMPLEMENETED>"; }
+        public String executeCommand(String command, String username) throws IOException{
+            String[] commandParts = command.split(" ");
+            if(commandParts.length > 2){
+                return "The command contains too many options. It should be delete <filename>";
+            }
+            if(commandParts.length < 2){
+                return "The command doesn't specify file name. It should be delete <filename>";
+            }
+            String filename = commandParts[1];
+            boolean isDeleted = Files.deleteIfExists(uploadedFileDir.resolve(username).resolve("pub-"+filename)) || 
+                Files.deleteIfExists(uploadedFileDir.resolve(username).resolve("pri-"+filename));
+            if(isDeleted){
+                return "The file " + filename + " was deleted successfully";
+            } else {
+                return "There is no file " + filename;
+            }
+        }
     }
 
     public static void main(String args[]){
