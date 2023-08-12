@@ -10,6 +10,8 @@ import java.util.*;
 class FileServer {
     static List<Command> serverCommands = new ArrayList<>();
     static Path uploadedFileDir = Paths.get(".").resolve("uploadedFiles");
+    static Path userInfoDir = Paths.get(".").resolve("userInfo");
+    static Path userInfoFile = userInfoDir.resolve("info.txt");
     static {
         serverCommands.add(new ListUploadedFiles());
         serverCommands.add(new UploadFiles());
@@ -44,13 +46,16 @@ class FileServer {
                                 break;
                             }
                         } else if(command.equalsIgnoreCase("sign-up")){
-                            out.println("Create username: ");
+                            this.username = signup();
+                            if(this.username != null){
+                                break;
+                            }
                         } else {
                             out.println("Unknown command, please type in either sign-in or sign-up");
                         }
                     }
                 }
-
+                System.out.println(username + " has connected");
                 out.println("Hello " + this.username + ", below you can see a list of commands available to you:");
                 serverCommands.forEach(out::println);
                 List<String> commandKeywords = serverCommands.stream().map(a->a.getCommandKeyword()).toList();
@@ -69,8 +74,11 @@ class FileServer {
                     }
                 }
             } catch(Exception e){
-                e.printStackTrace();
-                // TODO handle
+                if(username != null){
+                    System.out.println(username + " has disconnected");
+                } else {
+                    System.out.println("Unregistered user disconnected");
+                }
             }
         }
 
@@ -89,14 +97,12 @@ class FileServer {
                         break;
                     }
                 }
-                // TODO retrieve password based on username
-                String correntPassword = "pass"; // TODO fix to not use String to store passwords
                 out.println("Type in password: ");
                 String password;
                 while(true){
                     password = readUserInput();
                     if(password != null){
-                        if(password.equals(correntPassword)){
+                        if(checkPassword(username, password)){
                             return username;
                         } else {
                             out.println("Information incorrect! ");
@@ -107,7 +113,64 @@ class FileServer {
             }
         }
 
-        private boolean signup(){
+        private String signup() throws IOException{
+            while(true){
+                out.println("Type in username: ");
+                String username;
+                while(true){
+                    username = readUserInput();
+                    if(username != null){
+                        if(usernameExists(username)){
+                            out.println("Such username already exists");
+                        } else {
+                            break;
+                        }
+                    } else {
+                        out.println("You must provide a user name");
+                    }
+                }
+                out.println("Type in password: ");
+                String password;
+                while(true){
+                    password = readUserInput();
+                    if(password != null){
+                        if(!password.contains(" ")){
+                            addUserInfo(username, password);
+                            out.println("Account successfully created!");
+                            return username;
+                        } else {
+                            out.println("Password cannot contain spaces");
+                        }
+                    }
+                }
+            }
+        }
+
+        private boolean usernameExists(String username) throws IOException{
+            List<String> data = Files.readAllLines(userInfoFile);
+            for(String line : data){
+                String existingUser = line.split(" ")[0];
+                if(username.equals(existingUser)){
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void addUserInfo(String user, String pass) throws IOException{
+            try(var writter = Files.newBufferedWriter(userInfoFile, StandardOpenOption.APPEND)){
+                writter.write(user + " " + pass + '\n');
+            }
+        }
+
+        private boolean checkPassword(String username, String password) throws IOException{
+            List<String> data = Files.readAllLines(userInfoFile);
+            for(String line : data){
+                String[] userData = line.split(" ");
+                if(username.equals(userData[0]) && password.equals(userData[1])){
+                    return true;
+                }
+            }
             return false;
         }
     }
@@ -281,6 +344,10 @@ class FileServer {
         try{
             executor = Executors.newCachedThreadPool();
             Files.createDirectories(uploadedFileDir);
+            Files.createDirectories(userInfoDir);
+            if(!Files.exists(userInfoFile)){
+                Files.createFile(userInfoFile);
+            }
                 try(ServerSocket ss = new ServerSocket(6050)) {
                     while(true){
                         Socket s = ss.accept();
