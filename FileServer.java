@@ -54,6 +54,7 @@ class FileServer {
                 out.println("Hello " + this.username + ", below you can see a list of commands available to you:");
                 serverCommands.forEach(out::println);
                 List<String> commandKeywords = serverCommands.stream().map(a->a.getCommandKeyword()).toList();
+                Files.createDirectories(uploadedFileDir.resolve(username));
 
                 while(true){
                     String command = readUserInput();
@@ -188,6 +189,7 @@ class FileServer {
                         writter.write(data.substring(5)+'\n');
                     }
                 }
+                writter.flush();
             } catch (Exception e){
                 return "Failed to upload file";
             }
@@ -212,7 +214,36 @@ class FileServer {
 
         @Override
         public String executeCommand(String command, String username, BufferedReader in, PrintWriter out){
-            return "<NOT IMPLEMENETED>";
+            String[] commandParts = command.split(" ");
+            if(commandParts.length > 2){
+                return "The command contains too many options. It should be delete <filename>";
+            }
+            if(commandParts.length < 2){
+                return "The command doesn't specify file name. It should be delete <filename>";
+            }
+
+            Path userFileDir = uploadedFileDir.resolve(username);
+            Path filepath;
+            if(Files.exists(userFileDir.resolve("pri-"+commandParts[1]))){
+                filepath = userFileDir.resolve("pri-"+commandParts[1]);
+            } else if(Files.exists(userFileDir.resolve("pub-"+commandParts[1]))) {
+                filepath = userFileDir.resolve("pri-"+commandParts[1]);
+            } else {
+                return "Such file doesn't exists";
+            }
+            out.println("<DOWNLOAD FILE>");
+            try(var reader = Files.newBufferedReader(filepath)) {
+                String line;
+                while((line = reader.readLine()) != null){
+                    out.println("<CON>" + line);
+                }
+                out.println("<FIN>");
+            } catch(IOException e){
+                System.out.println("Failure to download a file");
+                e.printStackTrace();
+                return "Failed to download a file";
+            }
+            return "File downloaded successfully";
         }
     }
 

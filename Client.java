@@ -16,6 +16,7 @@ public class Client {
         private final Console console = System.console();
 
         private BufferedReader uploadedFileReader = null;
+        private PrintWriter downloadFileWritter = null;
 
         public ConnectionHandler(Socket s) throws IOException{
             this.s = s;
@@ -31,6 +32,7 @@ public class Client {
                         if(answer != null){
                             if(answer.equalsIgnoreCase("<END OF ANSWER>")) {
                                 closeUploadFileReader();
+                                closeDownloadFileReader();
                                 break;
                             }
 
@@ -41,6 +43,24 @@ public class Client {
                                 }
                                 out.println("<FIN>");
                                 closeUploadFileReader();
+                                continue;
+                            }
+
+                            if(answer.equalsIgnoreCase("<DOWNLOAD FILE>")){
+                                try{
+                                    while(true){
+                                        String data = in.readLine();
+                                        if(data == null || data.equals("<FIN>")){
+                                            break;
+                                        }
+                                        if(data.substring(0, 5).equals("<CON>")){
+                                            downloadFileWritter.write(data.substring(5)+'\n');
+                                        }
+                                    }
+                                    downloadFileWritter.flush();
+                                } finally {
+                                    closeDownloadFileReader();
+                                }
                                 continue;
                             }
 
@@ -60,6 +80,17 @@ public class Client {
                                     continue;
                                 }
                             }
+
+                            if(commandParts[0].equalsIgnoreCase("download")){
+                                try{
+                                    downloadFileWritter = new PrintWriter(Files.newBufferedWriter(Paths.get(".").resolve(commandParts[1])));
+                                } catch (Exception e){
+                                    System.out.println("There is already a " + commandParts[1] + " file");
+                                    e.printStackTrace();
+                                    downloadFileWritter = null;
+                                    continue;
+                                }
+                            }
     
                             this.out.println(command);
                             break;
@@ -75,6 +106,13 @@ public class Client {
             if(uploadedFileReader != null){
                 uploadedFileReader.close();
                 uploadedFileReader = null;
+            }
+        }
+
+        public void closeDownloadFileReader() throws IOException{
+            if(downloadFileWritter != null){
+                downloadFileWritter.close();
+                downloadFileWritter = null;
             }
         }
     }
