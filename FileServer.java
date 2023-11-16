@@ -3,7 +3,6 @@ import java.net.*;
 import java.nio.file.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.*;
 
@@ -349,6 +348,7 @@ class FileServer {
                 Files.createFile(userInfoFile);
             }
                 try(ServerSocket ss = new ServerSocket(6050)) {
+                    System.out.println("The server is running");
                     while(true){
                         Socket s = ss.accept();
                         executor.execute(new ConnectionHandler(s));
