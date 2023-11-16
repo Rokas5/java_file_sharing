@@ -1,5 +1,5 @@
 # Java File Sharing App
-### This is a simple application that allows upload and download file to/from server.
+### This is a simple application that allows to upload and download files to/from server.
 
 ## To run it:
 * Launch the server by calling: java FileServer.java
